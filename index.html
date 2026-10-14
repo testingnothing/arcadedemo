@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -80,80 +81,72 @@
     </div>
 
     <script>
-    const API_BASE = "https://YOUR-RENDER-SERVICE.onrender.com";
+        // The website and API are hosted on the same Render service.
+        const API_BASE = "";
 
-    // Ask for the dashboard access token without displaying it in the UI.
-    let adminToken = sessionStorage.getItem("ledAdminToken");
+        async function updateLEDs() {
+            try {
+                const response = await fetch(API_BASE + "/api/leds");
 
-    if (!adminToken) {
-        adminToken = prompt("Enter dashboard access token:");
-        if (adminToken) {
-            sessionStorage.setItem("ledAdminToken", adminToken);
+                if (!response.ok) {
+                    throw new Error("Backend request failed");
+                }
+
+                const data = await response.json();
+
+                document.getElementById("connection").textContent =
+                    data.deviceOnline
+                        ? "Connected"
+                        : "Backend connected; ESP32 offline";
+
+                showLED(1, data.led1);
+                showLED(2, data.led2);
+
+            } catch (error) {
+                document.getElementById("connection").textContent =
+                    "Disconnected";
+            }
         }
-    }
 
-    async function apiRequest(path, options = {}) {
-        const headers = {
-            "Authorization": "Bearer " + adminToken,
-            ...(options.headers || {})
-        };
+        function showLED(number, state) {
+            document.getElementById("led" + number)
+                .classList.toggle("on", state);
 
-        const response = await fetch(API_BASE + path, {
-            ...options,
-            headers
-        });
-
-        if (!response.ok) {
-            throw new Error("API request failed: " + response.status);
+            document.getElementById("state" + number).textContent =
+                state ? "ON" : "OFF";
         }
 
-        return response.json();
-    }
+        async function setLED(number, state) {
+            try {
+                const body = {};
+                body["led" + number] = state;
 
-    async function updateLEDs() {
-        try {
-            const data = await apiRequest("/api/leds");
+                const response = await fetch(API_BASE + "/api/leds", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify(body)
+                });
 
-            document.getElementById("connection").textContent = "Connected";
-            showLED(1, data.led1);
-            showLED(2, data.led2);
-        } catch (error) {
-            document.getElementById("connection").textContent =
-                "Disconnected";
+                if (!response.ok) {
+                    throw new Error("Command request failed");
+                }
+
+                // Allow the ESP32 time to receive the command.
+                setTimeout(updateLEDs, 500);
+                setTimeout(updateLEDs, 1500);
+                setTimeout(updateLEDs, 2500);
+
+            } catch (error) {
+                document.getElementById("connection").textContent =
+                    "Command failed";
+            }
         }
-    }
 
-    function showLED(number, state) {
-        document.getElementById("led" + number)
-            .classList.toggle("on", state);
-
-        document.getElementById("state" + number).textContent =
-            state ? "ON" : "OFF";
-    }
-
-    async function setLED(number, state) {
-        try {
-            const body = {};
-            body["led" + number] = state;
-
-            await apiRequest("/api/leds", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify(body)
-            });
-
-            await updateLEDs();
-        } catch (error) {
-            document.getElementById("connection").textContent =
-                "Command failed";
-        }
-    }
-
-    updateLEDs();
-    setInterval(updateLEDs, 2000);
-</script>
+        updateLEDs();
+        setInterval(updateLEDs, 2000);
+    </script>
 
 </body>
 </html>
