@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESP32 LED Controller</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #101820;
+            color: white;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .card {
+            background: #1c2936;
+            padding: 25px;
+            margin: 20px auto;
+            max-width: 400px;
+            border-radius: 12px;
+        }
+
+        .led {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: #555;
+            margin: 20px auto;
+        }
+
+        .led.on {
+            background: #00e676;
+            box-shadow: 0 0 20px #00e676;
+        }
+
+        button {
+            padding: 12px 25px;
+            margin: 8px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .on-button {
+            background: #00c853;
+            color: white;
+        }
+
+        .off-button {
+            background: #d32f2f;
+            color: white;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>ESP32 LED Controller</h1>
+    <p>Connection: <span id="connection">Connecting...</span></p>
+
+    <div class="card">
+        <h2>LED 1 — GPIO5</h2>
+        <div id="led1" class="led"></div>
+        <p>State: <span id="state1">OFF</span></p>
+
+        <button class="on-button" onclick="setLED(1, true)">ON</button>
+        <button class="off-button" onclick="setLED(1, false)">OFF</button>
+    </div>
+
+    <div class="card">
+        <h2>LED 2 — GPIO18</h2>
+        <div id="led2" class="led"></div>
+        <p>State: <span id="state2">OFF</span></p>
+
+        <button class="on-button" onclick="setLED(2, true)">ON</button>
+        <button class="off-button" onclick="setLED(2, false)">OFF</button>
+    </div>
+
+    <script>
+    const API_BASE = "https://YOUR-RENDER-SERVICE.onrender.com";
+
+    // Ask for the dashboard access token without displaying it in the UI.
+    let adminToken = sessionStorage.getItem("ledAdminToken");
+
+    if (!adminToken) {
+        adminToken = prompt("Enter dashboard access token:");
+        if (adminToken) {
+            sessionStorage.setItem("ledAdminToken", adminToken);
+        }
+    }
+
+    async function apiRequest(path, options = {}) {
+        const headers = {
+            "Authorization": "Bearer " + adminToken,
+            ...(options.headers || {})
+        };
+
+        const response = await fetch(API_BASE + path, {
+            ...options,
+            headers
+        });
+
+        if (!response.ok) {
+            throw new Error("API request failed: " + response.status);
+        }
+
+        return response.json();
+    }
+
+    async function updateLEDs() {
+        try {
+            const data = await apiRequest("/api/leds");
+
+            document.getElementById("connection").textContent = "Connected";
+            showLED(1, data.led1);
+            showLED(2, data.led2);
+        } catch (error) {
+            document.getElementById("connection").textContent =
+                "Disconnected";
+        }
+    }
+
+    function showLED(number, state) {
+        document.getElementById("led" + number)
+            .classList.toggle("on", state);
+
+        document.getElementById("state" + number).textContent =
+            state ? "ON" : "OFF";
+    }
+
+    async function setLED(number, state) {
+        try {
+            const body = {};
+            body["led" + number] = state;
+
+            await apiRequest("/api/leds", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(body)
+            });
+
+            await updateLEDs();
+        } catch (error) {
+            document.getElementById("connection").textContent =
+                "Command failed";
+        }
+    }
+
+    updateLEDs();
+    setInterval(updateLEDs, 2000);
+</script>
+
+</body>
+</html>
