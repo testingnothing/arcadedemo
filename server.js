@@ -1,65 +1,65 @@
 
 const express = require("express");
 const path = require("path");
+const crypto = require("crypto");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const API_KEY = process.env.PLC_API_KEY;
 
-app.use(express.json());
+app.use(express.json({ limit: "10kb" }));
+app.use(express.static(__dirname));
 
-// Serve the webpage from the repository root.
-app.get("/", (req, res) => {
-    res.sendFile(path.join(__dirname, "index.html"));
+let latestData = null;
+
+function validApiKey(receivedKey) {
+    if (!API_KEY || !receivedKey) return false;
+
+    const expected = Buffer.from(API_KEY);
+    const received = Buffer.from(receivedKey);
+
+    return expected.length === received.length &&
+        crypto.timingSafeEqual(expected, received);
+}
+
+app.post("/api/plc-data", (req, res) => {
+    if (!validApiKey(req.get("x-api-key"))) {
+        return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const { year, month, day, hour, minute, second } = req.body;
+
+    const values = [year, month, day, hour, minute, second];
+
+    if (!values.every(Number.isInteger)) {
+        return res.status(400).json({ error: "Invalid PLC values" });
+    }
+
+    latestData = {
+        year, month, day, hour, minute, second,
+        receivedAt: new Date().toISOString()
+    };
+
+    res.json({ success: true });
 });
 
-// Requested LED states and reported physical states.
-let desired = { led1: false, led2: false };
-let actual = { led1: false, led2: false };
-let lastSeen = null;
+app.get("/api/plc-data", (req, res) => {
+    if (!latestData) {
+        return res.json({ connected: false, data: null });
+    }
 
-// Website reads the current state.
-app.get("/api/leds", (req, res) => {
+    const age = Date.now() - Date.parse(latestData.receivedAt);
+
     res.json({
-        led1: actual.led1,
-        led2: actual.led2,
-        deviceOnline: lastSeen !== null &&
-            Date.now() - lastSeen < 15000
+        connected: age < 5000,
+        data: latestData
     });
 });
 
-// Website requests a change.
-app.post("/api/leds", (req, res) => {
-    if (typeof req.body.led1 === "boolean") {
-        desired.led1 = req.body.led1;
-    }
-
-    if (typeof req.body.led2 === "boolean") {
-        desired.led2 = req.body.led2;
-    }
-
-    res.json({ accepted: true });
-});
-
-// ESP32 retrieves the requested states.
-app.get("/device/commands", (req, res) => {
-    res.json(desired);
-});
-
-// ESP32 reports its current output states.
-app.post("/device/status", (req, res) => {
-    if (typeof req.body.led1 === "boolean") {
-        actual.led1 = req.body.led1;
-    }
-
-    if (typeof req.body.led2 === "boolean") {
-        actual.led2 = req.body.led2;
-    }
-
-    lastSeen = Date.now();
-
-    res.json({ received: true });
+app.get("/health", (req, res) => {
+    res.json({ status: "running" });
 });
 
 app.listen(PORT, "0.0.0.0", () => {
-    console.log(`LED server running on port ${PORT}`);
+    console.log(`PLC dashboard server listening on port ${PORT}`);
 });
