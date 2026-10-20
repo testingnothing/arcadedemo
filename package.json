@@ -1,8 +1,9 @@
-
 {
-  "name": "arcadedemo",
+  "name": "plc-web-dashboard",
   "version": "1.0.0",
   "private": true,
+  "description": "Live Mitsubishi PLC monitoring dashboard",
+  "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
