@@ -1,152 +1,222 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ESP32 LED Controller</title>
+    <title>PLC Live Monitor</title>
 
     <style>
+        * { box-sizing: border-box; }
+
         body {
+            margin: 0;
+            min-height: 100vh;
+            background: #0b1120;
+            color: #e5edf8;
             font-family: Arial, sans-serif;
-            background: #101820;
-            color: white;
-            text-align: center;
-            padding: 20px;
+        }
+
+        header {
+            padding: 22px 6%;
+            border-bottom: 1px solid #263247;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+        }
+
+        h1 { font-size: 21px; margin: 0; }
+        .subtitle { color: #8b9bb4; font-size: 13px; margin-top: 7px; }
+
+        .status {
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            background: #352b16;
+            color: #fbbf24;
+            white-space: nowrap;
+        }
+
+        .status.online {
+            background: #123329;
+            color: #5ee6ae;
+        }
+
+        main {
+            width: min(1000px, 90%);
+            margin: 38px auto;
+        }
+
+        .section-title {
+            color: #8b9bb4;
+            font-size: 12px;
+            letter-spacing: 1.5px;
+            margin-bottom: 16px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 16px;
         }
 
         .card {
-            background: #1c2936;
-            padding: 25px;
-            margin: 20px auto;
-            max-width: 400px;
+            background: #131d30;
+            border: 1px solid #263247;
             border-radius: 12px;
+            padding: 22px;
         }
 
-        .led {
-            width: 45px;
-            height: 45px;
-            border-radius: 50%;
-            background: #555;
-            margin: 20px auto;
+        .label { color: #94a5bf; font-size: 13px; }
+
+        .value {
+            font-size: clamp(25px, 4vw, 34px);
+            font-weight: bold;
+            margin-top: 13px;
+            overflow-wrap: anywhere;
         }
 
-        .led.on {
-            background: #00e676;
-            box-shadow: 0 0 20px #00e676;
+        .register {
+            color: #627692;
+            font-family: monospace;
+            font-size: 12px;
+            margin-top: 10px;
         }
 
-        button {
-            padding: 12px 25px;
-            margin: 8px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 16px;
+        .info {
+            margin-top: 22px;
+            padding: 18px 20px;
+            background: #131d30;
+            border: 1px solid #263247;
+            border-radius: 12px;
+            color: #94a5bf;
+            font-size: 13px;
+            line-height: 1.8;
         }
 
-        .on-button {
-            background: #00c853;
-            color: white;
+        .info strong { color: #e5edf8; }
+
+        footer {
+            text-align: center;
+            padding: 20px;
+            color: #627692;
+            font-size: 12px;
         }
 
-        .off-button {
-            background: #d32f2f;
-            color: white;
+        @media (max-width: 600px) {
+            .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            header { padding: 18px 5%; }
+            main { margin-top: 25px; }
+            .card { padding: 16px; }
         }
     </style>
 </head>
 
 <body>
+    <header>
+        <div>
+            <h1>PLC Live Monitor</h1>
+            <div class="subtitle">Mitsubishi FX3S · Register Monitoring</div>
+        </div>
+        <div id="status" class="status">Waiting for data</div>
+    </header>
 
-    <h1>ESP32 LED Controller</h1>
-    <p>Connection: <span id="connection">Connecting...</span></p>
+    <main>
+        <div class="section-title">LIVE PLC REGISTERS</div>
 
-    <div class="card">
-        <h2>LED 1 — GPIO5</h2>
-        <div id="led1" class="led"></div>
-        <p>State: <span id="state1">OFF</span></p>
+        <div class="grid">
+            <div class="card">
+                <div class="label">Year</div>
+                <div class="value" id="year">--</div>
+                <div class="register">D400</div>
+            </div>
 
-        <button class="on-button" onclick="setLED(1, true)">ON</button>
-        <button class="off-button" onclick="setLED(1, false)">OFF</button>
-    </div>
+            <div class="card">
+                <div class="label">Month</div>
+                <div class="value" id="month">--</div>
+                <div class="register">D401</div>
+            </div>
 
-    <div class="card">
-        <h2>LED 2 — GPIO18</h2>
-        <div id="led2" class="led"></div>
-        <p>State: <span id="state2">OFF</span></p>
+            <div class="card">
+                <div class="label">Day</div>
+                <div class="value" id="day">--</div>
+                <div class="register">D402</div>
+            </div>
 
-        <button class="on-button" onclick="setLED(2, true)">ON</button>
-        <button class="off-button" onclick="setLED(2, false)">OFF</button>
-    </div>
+            <div class="card">
+                <div class="label">Hour</div>
+                <div class="value" id="hour">--</div>
+                <div class="register">D403</div>
+            </div>
+
+            <div class="card">
+                <div class="label">Minute</div>
+                <div class="value" id="minute">--</div>
+                <div class="register">D404</div>
+            </div>
+
+            <div class="card">
+                <div class="label">Second</div>
+                <div class="value" id="second">--</div>
+                <div class="register">D405</div>
+            </div>
+        </div>
+
+        <div class="info">
+            <div>PLC connection: <strong id="connection">Waiting</strong></div>
+            <div>Last server update: <strong id="updated">Never</strong></div>
+            <div>Dashboard polling: <strong>Every second</strong></div>
+        </div>
+    </main>
+
+    <footer>Live data supplied by your local Python PLC reader</footer>
 
     <script>
-        // The website and API are hosted on the same Render service.
-        const API_BASE = "";
+        const fields = ["year", "month", "day", "hour", "minute", "second"];
 
-        async function updateLEDs() {
+        async function refreshData() {
+            const status = document.getElementById("status");
+
             try {
-                const response = await fetch(API_BASE + "/api/leds");
-
-                if (!response.ok) {
-                    throw new Error("Backend request failed");
-                }
-
-                const data = await response.json();
-
-                document.getElementById("connection").textContent =
-                    data.deviceOnline
-                        ? "Connected"
-                        : "Backend connected; ESP32 offline";
-
-                showLED(1, data.led1);
-                showLED(2, data.led2);
-
-            } catch (error) {
-                document.getElementById("connection").textContent =
-                    "Disconnected";
-            }
-        }
-
-        function showLED(number, state) {
-            document.getElementById("led" + number)
-                .classList.toggle("on", state);
-
-            document.getElementById("state" + number).textContent =
-                state ? "ON" : "OFF";
-        }
-
-        async function setLED(number, state) {
-            try {
-                const body = {};
-                body["led" + number] = state;
-
-                const response = await fetch(API_BASE + "/api/leds", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify(body)
+                const response = await fetch("/api/plc-data", {
+                    cache: "no-store"
                 });
 
                 if (!response.ok) {
-                    throw new Error("Command request failed");
+                    throw new Error("Server returned " + response.status);
                 }
 
-                // Allow the ESP32 time to receive the command.
-                setTimeout(updateLEDs, 500);
-                setTimeout(updateLEDs, 1500);
-                setTimeout(updateLEDs, 2500);
+                const result = await response.json();
+                const online = result.connected && result.data;
 
-            } catch (error) {
+                status.textContent = online ? "● Connected" : "● Offline";
+                status.classList.toggle("online", Boolean(online));
+
                 document.getElementById("connection").textContent =
-                    "Command failed";
+                    online ? "Receiving data" : "Waiting for Python data";
+
+                if (online) {
+                    fields.forEach(field => {
+                        document.getElementById(field).textContent =
+                            String(result.data[field]).padStart(2, "0");
+                    });
+
+                    document.getElementById("year").textContent =
+                        result.data.year;
+
+                    document.getElementById("updated").textContent =
+                        new Date(result.data.receivedAt).toLocaleTimeString();
+                }
+            } catch (error) {
+                status.textContent = "● Server unavailable";
+                status.classList.remove("online");
+                document.getElementById("connection").textContent =
+                    "Cannot reach server";
             }
         }
 
-        updateLEDs();
-        setInterval(updateLEDs, 2000);
+        refreshData();
+        setInterval(refreshData, 1000);
     </script>
-
 </body>
 </html>
