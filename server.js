@@ -1,65 +1,86 @@
-
 const express = require("express");
+const fs = require("fs");
 const path = require("path");
-const crypto = require("crypto");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const API_KEY = process.env.PLC_API_KEY;
 
-app.use(express.json({ limit: "10kb" }));
-app.use(express.static(__dirname));
+// Trust Render's reverse proxy
+app.set("trust proxy", 1);
 
-let latestData = null;
+// Log file location
+const DATA_DIR = path.join(__dirname, "data");
+const LOG_FILE = path.join(DATA_DIR, "visitors.txt");
 
-function validApiKey(receivedKey) {
-    if (!API_KEY || !receivedKey) return false;
-
-    const expected = Buffer.from(API_KEY);
-    const received = Buffer.from(receivedKey);
-
-    return expected.length === received.length &&
-        crypto.timingSafeEqual(expected, received);
+// Create data directory if it doesn't exist
+if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
-app.post("/api/plc-data", (req, res) => {
-    if (!validApiKey(req.get("x-api-key"))) {
-        return res.status(401).json({ error: "Unauthorized" });
-    }
+// Serialize writes to avoid simultaneous requests overwriting each other
+let writeQueue = Promise.resolve();
 
-    const { year, month, day, hour, minute, second } = req.body;
+function logVisitor(ip) {
+    writeQueue = writeQueue.then(async () => {
+        const timestamp = new Date().toISOString();
 
-    const values = [year, month, day, hour, minute, second];
+        const entry =
+            `IP: ${ip} | Timestamp: ${timestamp}\n`;
 
-    if (!values.every(Number.isInteger)) {
-        return res.status(400).json({ error: "Invalid PLC values" });
-    }
+        let existingData = "";
 
-    latestData = {
-        year, month, day, hour, minute, second,
-        receivedAt: new Date().toISOString()
-    };
+        try {
+            existingData = await fs.promises.readFile(
+                LOG_FILE,
+                "utf8"
+            );
+        } catch (error) {
+            if (error.code !== "ENOENT") {
+                throw error;
+            }
+        }
 
-    res.json({ success: true });
-});
+        // Newest entry goes first
+        const updatedData = entry + existingData;
 
-app.get("/api/plc-data", (req, res) => {
-    if (!latestData) {
-        return res.json({ connected: false, data: null });
-    }
+        const tempFile = LOG_FILE + ".tmp";
 
-    const age = Date.now() - Date.parse(latestData.receivedAt);
+        await fs.promises.writeFile(
+            tempFile,
+            updatedData,
+            "utf8"
+        );
 
-    res.json({
-        connected: age < 5000,
-        data: latestData
+        await fs.promises.rename(tempFile, LOG_FILE);
     });
+
+    return writeQueue;
+}
+
+// Homepage
+app.get("/", async (req, res) => {
+    try {
+        const visitorIP = req.ip || "Unknown";
+
+        await logVisitor(visitorIP);
+
+        res.set("Cache-Control", "no-store");
+
+        res.sendFile(
+            path.join(__dirname, "public", "index.html")
+        );
+
+    } catch (error) {
+        console.error("Logging error:", error);
+        res.status(500).send("Unable to record visit.");
+    }
 });
 
+// Health check
 app.get("/health", (req, res) => {
-    res.json({ status: "running" });
+    res.send("Server is running");
 });
 
 app.listen(PORT, "0.0.0.0", () => {
-    console.log(`PLC dashboard server listening on port ${PORT}`);
+    console.log(`Server running on port ${PORT}`);
 });
