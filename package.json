@@ -1,12 +1,14 @@
+
 {
   "name": "visitor-ip-logger",
   "version": "1.0.0",
-  "description": "Visitor IP logging test website",
+  "description": "Photo website with MongoDB visitor logging",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
-    "express": "^4.21.2"
+    "express": "^4.21.2",
+    "mongodb": "^6.12.0"
   }
 }
