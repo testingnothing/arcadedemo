@@ -1,13 +1,12 @@
 {
-  "name": "plc-web-dashboard",
+  "name": "visitor-ip-logger",
   "version": "1.0.0",
-  "private": true,
-  "description": "Live Mitsubishi PLC monitoring dashboard",
+  "description": "Visitor IP logging test website",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
-    "express": "^5.1.0"
+    "express": "^4.21.2"
   }
 }
