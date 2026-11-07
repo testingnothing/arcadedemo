@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -5,7 +6,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>Visitor Logger</title>
+    <title>Photo Gallery</title>
 
     <style>
         * {
@@ -15,85 +16,56 @@
         }
 
         body {
-            font-family: Arial, sans-serif;
-            background: #f4f6f9;
             min-height: 100vh;
+            background: #111;
             display: flex;
-            align-items: center;
             justify-content: center;
+            align-items: center;
             padding: 20px;
+            font-family: Arial, sans-serif;
         }
 
         .container {
-            background: white;
             width: 100%;
-            max-width: 500px;
-            padding: 40px;
-            border-radius: 12px;
+            max-width: 1000px;
             text-align: center;
-            box-shadow: 0 5px 25px rgba(0, 0, 0, 0.08);
         }
 
-        .status {
-            display: inline-block;
-            background: #e6f7ed;
-            color: #16834b;
-            padding: 9px 16px;
-            border-radius: 20px;
-            font-size: 13px;
-            font-weight: bold;
-            margin-bottom: 25px;
+        .photo {
+            width: 100%;
+            max-height: 85vh;
+            object-fit: contain;
+            border-radius: 8px;
         }
 
-        h1 {
-            font-size: 27px;
-            color: #222;
-            margin-bottom: 15px;
-        }
-
-        p {
-            color: #666;
-            font-size: 15px;
-            line-height: 1.7;
-        }
-
-        .footer {
-            margin-top: 30px;
+        .notice {
+            margin-top: 15px;
+            color: #aaa;
             font-size: 12px;
-            color: #999;
         }
     </style>
 </head>
 
 <body>
 
-    <div class="container">
+    <main class="container">
 
-        <div class="status">
-            ● Visit Recorded
-        </div>
+        <img
+            src="/photo.jpg"
+            alt="Photograph"
+            class="photo"
+        >
 
-        <h1>Visitor Logger</h1>
-
-        <p>
-            Your visit has been recorded successfully.
-        </p>
-
-        <p style="margin-top: 12px;">
+        <p class="notice">
             This website collects visitor IP addresses
-            and timestamps for testing purposes.
+            and visit timestamps for testing purposes.
         </p>
 
-        <div class="footer">
-            Visitor IP Logging Test
-        </div>
-
-    </div>
+    </main>
 
     <script>
-        console.log("Visitor logger website loaded.");
+        console.log("Photo website loaded.");
     </script>
 
 </body>
-
 </html>
