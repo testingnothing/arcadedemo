@@ -1,68 +1,64 @@
+
 const express = require("express");
-const fs = require("fs");
+const { MongoClient } = require("mongodb");
 const path = require("path");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Trust Render's reverse proxy
 app.set("trust proxy", 1);
 
-// Log file location
-const DATA_DIR = path.join(__dirname, "data");
-const LOG_FILE = path.join(DATA_DIR, "visitors.txt");
+const MONGODB_URI = process.env.MONGODB_URI;
 
-// Create data directory if it doesn't exist
-if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
+if (!MONGODB_URI) {
+    throw new Error("MONGODB_URI environment variable is missing");
 }
 
-// Serialize writes to avoid simultaneous requests overwriting each other
-let writeQueue = Promise.resolve();
+const client = new MongoClient(MONGODB_URI, {
+    serverSelectionTimeoutMS: 10000
+});
 
-function logVisitor(ip) {
-    writeQueue = writeQueue.then(async () => {
-        const timestamp = new Date().toISOString();
+let visitors;
 
-        const entry =
-            `IP: ${ip} | Timestamp: ${timestamp}\n`;
+// Connect to MongoDB
+async function connectDB() {
+    await client.connect();
 
-        let existingData = "";
+    const db = client.db("visitor_logger");
+    visitors = db.collection("visitors");
 
-        try {
-            existingData = await fs.promises.readFile(
-                LOG_FILE,
-                "utf8"
-            );
-        } catch (error) {
-            if (error.code !== "ENOENT") {
-                throw error;
-            }
-        }
+    await visitors.createIndex({ createdAt: -1 });
 
-        // Newest entry goes first
-        const updatedData = entry + existingData;
+    console.log("Connected to MongoDB Atlas");
+}
 
-        const tempFile = LOG_FILE + ".tmp";
+// Get visitor IP
+function getVisitorIP(req) {
+    const forwardedFor = req.get("x-forwarded-for");
 
-        await fs.promises.writeFile(
-            tempFile,
-            updatedData,
-            "utf8"
-        );
+    if (forwardedFor) {
+        return forwardedFor.split(",")[0].trim();
+    }
 
-        await fs.promises.rename(tempFile, LOG_FILE);
+    return req.ip || "Unknown";
+}
+
+// Record visitor
+async function recordVisitor(req) {
+    const ip = getVisitorIP(req);
+
+    await visitors.insertOne({
+        ip: ip,
+        createdAt: new Date()
     });
 
-    return writeQueue;
+    console.log("Visitor recorded:", ip);
 }
 
 // Homepage
 app.get("/", async (req, res) => {
     try {
-        const visitorIP = req.ip || "Unknown";
-
-        await logVisitor(visitorIP);
+        await recordVisitor(req);
 
         res.set("Cache-Control", "no-store");
 
@@ -71,16 +67,90 @@ app.get("/", async (req, res) => {
         );
 
     } catch (error) {
-        console.error("Logging error:", error);
-        res.status(500).send("Unable to record visit.");
+        console.error("Visitor logging failed:", error);
+
+        res.status(500).send(
+            "Unable to load the website. Please try again."
+        );
+    }
+});
+
+// Admin page
+app.get("/admin", (req, res) => {
+    res.set("X-Robots-Tag", "noindex, nofollow");
+
+    res.sendFile(
+        path.join(__dirname, "public", "admin.html")
+    );
+});
+
+// Visitor records API
+app.get("/api/visitors", async (req, res) => {
+    try {
+        const limit = Math.min(
+            Math.max(parseInt(req.query.limit) || 50, 1),
+            100
+        );
+
+        const skip = Math.max(
+            parseInt(req.query.skip) || 0,
+            0
+        );
+
+        const [records, total] = await Promise.all([
+            visitors.find({})
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limit)
+                .toArray(),
+
+            visitors.countDocuments()
+        ]);
+
+        res.set("Cache-Control", "no-store");
+
+        res.json({
+            total,
+            limit,
+            skip,
+            records: records.map(record => ({
+                ip: record.ip,
+                timestamp: record.createdAt
+            }))
+        });
+
+    } catch (error) {
+        console.error("Admin API error:", error);
+
+        res.status(500).json({
+            error: "Unable to retrieve visitor records"
+        });
     }
 });
 
 // Health check
 app.get("/health", (req, res) => {
-    res.send("Server is running");
+    res.json({ status: "running" });
 });
 
-app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on port ${PORT}`);
-});
+// Serve photo and other static assets
+app.use(express.static(
+    path.join(__dirname, "public")
+));
+
+// Start server only after database connection
+async function startServer() {
+    try {
+        await connectDB();
+
+        app.listen(PORT, "0.0.0.0", () => {
+            console.log(`Server running on port ${PORT}`);
+        });
+
+    } catch (error) {
+        console.error("Database connection failed:", error);
+        process.exit(1);
+    }
+}
+
+startServer();
