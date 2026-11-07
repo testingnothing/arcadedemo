@@ -1,222 +1,99 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PLC Live Monitor</title>
+
+    <title>Visitor Logger</title>
 
     <style>
-        * { box-sizing: border-box; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
         body {
-            margin: 0;
-            min-height: 100vh;
-            background: #0b1120;
-            color: #e5edf8;
             font-family: Arial, sans-serif;
-        }
-
-        header {
-            padding: 22px 6%;
-            border-bottom: 1px solid #263247;
+            background: #f4f6f9;
+            min-height: 100vh;
             display: flex;
-            justify-content: space-between;
             align-items: center;
-            gap: 16px;
+            justify-content: center;
+            padding: 20px;
         }
 
-        h1 { font-size: 21px; margin: 0; }
-        .subtitle { color: #8b9bb4; font-size: 13px; margin-top: 7px; }
+        .container {
+            background: white;
+            width: 100%;
+            max-width: 500px;
+            padding: 40px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 5px 25px rgba(0, 0, 0, 0.08);
+        }
 
         .status {
-            padding: 8px 12px;
+            display: inline-block;
+            background: #e6f7ed;
+            color: #16834b;
+            padding: 9px 16px;
             border-radius: 20px;
-            font-size: 12px;
-            background: #352b16;
-            color: #fbbf24;
-            white-space: nowrap;
-        }
-
-        .status.online {
-            background: #123329;
-            color: #5ee6ae;
-        }
-
-        main {
-            width: min(1000px, 90%);
-            margin: 38px auto;
-        }
-
-        .section-title {
-            color: #8b9bb4;
-            font-size: 12px;
-            letter-spacing: 1.5px;
-            margin-bottom: 16px;
-        }
-
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 16px;
-        }
-
-        .card {
-            background: #131d30;
-            border: 1px solid #263247;
-            border-radius: 12px;
-            padding: 22px;
-        }
-
-        .label { color: #94a5bf; font-size: 13px; }
-
-        .value {
-            font-size: clamp(25px, 4vw, 34px);
-            font-weight: bold;
-            margin-top: 13px;
-            overflow-wrap: anywhere;
-        }
-
-        .register {
-            color: #627692;
-            font-family: monospace;
-            font-size: 12px;
-            margin-top: 10px;
-        }
-
-        .info {
-            margin-top: 22px;
-            padding: 18px 20px;
-            background: #131d30;
-            border: 1px solid #263247;
-            border-radius: 12px;
-            color: #94a5bf;
             font-size: 13px;
-            line-height: 1.8;
+            font-weight: bold;
+            margin-bottom: 25px;
         }
 
-        .info strong { color: #e5edf8; }
+        h1 {
+            font-size: 27px;
+            color: #222;
+            margin-bottom: 15px;
+        }
 
-        footer {
-            text-align: center;
-            padding: 20px;
-            color: #627692;
+        p {
+            color: #666;
+            font-size: 15px;
+            line-height: 1.7;
+        }
+
+        .footer {
+            margin-top: 30px;
             font-size: 12px;
-        }
-
-        @media (max-width: 600px) {
-            .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-            header { padding: 18px 5%; }
-            main { margin-top: 25px; }
-            .card { padding: 16px; }
+            color: #999;
         }
     </style>
 </head>
 
 <body>
-    <header>
-        <div>
-            <h1>PLC Live Monitor</h1>
-            <div class="subtitle">Mitsubishi FX3S · Register Monitoring</div>
-        </div>
-        <div id="status" class="status">Waiting for data</div>
-    </header>
 
-    <main>
-        <div class="section-title">LIVE PLC REGISTERS</div>
+    <div class="container">
 
-        <div class="grid">
-            <div class="card">
-                <div class="label">Year</div>
-                <div class="value" id="year">--</div>
-                <div class="register">D400</div>
-            </div>
-
-            <div class="card">
-                <div class="label">Month</div>
-                <div class="value" id="month">--</div>
-                <div class="register">D401</div>
-            </div>
-
-            <div class="card">
-                <div class="label">Day</div>
-                <div class="value" id="day">--</div>
-                <div class="register">D402</div>
-            </div>
-
-            <div class="card">
-                <div class="label">Hour</div>
-                <div class="value" id="hour">--</div>
-                <div class="register">D403</div>
-            </div>
-
-            <div class="card">
-                <div class="label">Minute</div>
-                <div class="value" id="minute">--</div>
-                <div class="register">D404</div>
-            </div>
-
-            <div class="card">
-                <div class="label">Second</div>
-                <div class="value" id="second">--</div>
-                <div class="register">D405</div>
-            </div>
+        <div class="status">
+            ● Visit Recorded
         </div>
 
-        <div class="info">
-            <div>PLC connection: <strong id="connection">Waiting</strong></div>
-            <div>Last server update: <strong id="updated">Never</strong></div>
-            <div>Dashboard polling: <strong>Every second</strong></div>
-        </div>
-    </main>
+        <h1>Visitor Logger</h1>
 
-    <footer>Live data supplied by your local Python PLC reader</footer>
+        <p>
+            Your visit has been recorded successfully.
+        </p>
+
+        <p style="margin-top: 12px;">
+            This website collects visitor IP addresses
+            and timestamps for testing purposes.
+        </p>
+
+        <div class="footer">
+            Visitor IP Logging Test
+        </div>
+
+    </div>
 
     <script>
-        const fields = ["year", "month", "day", "hour", "minute", "second"];
-
-        async function refreshData() {
-            const status = document.getElementById("status");
-
-            try {
-                const response = await fetch("/api/plc-data", {
-                    cache: "no-store"
-                });
-
-                if (!response.ok) {
-                    throw new Error("Server returned " + response.status);
-                }
-
-                const result = await response.json();
-                const online = result.connected && result.data;
-
-                status.textContent = online ? "● Connected" : "● Offline";
-                status.classList.toggle("online", Boolean(online));
-
-                document.getElementById("connection").textContent =
-                    online ? "Receiving data" : "Waiting for Python data";
-
-                if (online) {
-                    fields.forEach(field => {
-                        document.getElementById(field).textContent =
-                            String(result.data[field]).padStart(2, "0");
-                    });
-
-                    document.getElementById("year").textContent =
-                        result.data.year;
-
-                    document.getElementById("updated").textContent =
-                        new Date(result.data.receivedAt).toLocaleTimeString();
-                }
-            } catch (error) {
-                status.textContent = "● Server unavailable";
-                status.classList.remove("online");
-                document.getElementById("connection").textContent =
-                    "Cannot reach server";
-            }
-        }
-
-        refreshData();
-        setInterval(refreshData, 1000);
+        console.log("Visitor logger website loaded.");
     </script>
+
 </body>
+
 </html>
