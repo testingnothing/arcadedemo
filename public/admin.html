@@ -1,0 +1,308 @@
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Visitor Admin</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #f3f5f8;
+            color: #202938;
+            padding: 30px 20px;
+        }
+
+        .dashboard {
+            max-width: 1000px;
+            margin: auto;
+        }
+
+        h1 {
+            font-size: 27px;
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            color: #697586;
+            margin-bottom: 25px;
+        }
+
+        .stats {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 10px;
+            padding: 22px;
+            flex: 1;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+
+        .stat-card p {
+            color: #697586;
+            font-size: 13px;
+        }
+
+        .stat-card h2 {
+            font-size: 30px;
+            margin-top: 10px;
+        }
+
+        .table-container {
+            background: white;
+            border-radius: 10px;
+            overflow-x: auto;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+
+        .table-header {
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+        }
+
+        button {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 6px;
+            background: #202938;
+            color: white;
+            cursor: pointer;
+        }
+
+        button:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 500px;
+        }
+
+        th, td {
+            text-align: left;
+            padding: 15px 20px;
+            border-top: 1px solid #edf0f3;
+            font-size: 14px;
+        }
+
+        th {
+            background: #f8fafc;
+            color: #586474;
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 18px 20px;
+            gap: 10px;
+        }
+
+        #message {
+            color: #697586;
+            padding: 20px;
+            text-align: center;
+        }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 18px 10px;
+            }
+
+            .stats {
+                flex-direction: column;
+            }
+
+            .table-header {
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <main class="dashboard">
+
+        <h1>Visitor Dashboard</h1>
+
+        <p class="subtitle">
+            Visitor activity and IP records
+        </p>
+
+        <section class="stats">
+
+            <div class="stat-card">
+                <p>Total visits</p>
+                <h2 id="totalVisitors">--</h2>
+            </div>
+
+            <div class="stat-card">
+                <p>Records displayed</p>
+                <h2 id="displayedVisitors">--</h2>
+            </div>
+
+        </section>
+
+        <section class="table-container">
+
+            <div class="table-header">
+                <h3>Recent Visitors</h3>
+
+                <button onclick="loadVisitors()">
+                    Refresh
+                </button>
+            </div>
+
+            <table>
+
+                <thead>
+                    <tr>
+                        <th>IP Address</th>
+                        <th>Date and Time (UTC)</th>
+                    </tr>
+                </thead>
+
+                <tbody id="visitorRows"></tbody>
+
+            </table>
+
+            <p id="message">Loading records...</p>
+
+            <div class="pagination">
+
+                <button id="previousBtn"
+                    onclick="changePage(-1)">
+                    Previous
+                </button>
+
+                <span id="pageInfo">Page 1</span>
+
+                <button id="nextBtn"
+                    onclick="changePage(1)">
+                    Next
+                </button>
+
+            </div>
+
+        </section>
+
+    </main>
+
+    <script>
+
+        const limit = 50;
+        let currentPage = 0;
+        let totalRecords = 0;
+
+        async function loadVisitors() {
+
+            const rows = document.getElementById("visitorRows");
+            const message = document.getElementById("message");
+
+            rows.innerHTML = "";
+            message.textContent = "Loading records...";
+
+            try {
+
+                const response = await fetch(
+                    `/api/visitors?limit=${limit}&skip=${currentPage * limit}`,
+                    { cache: "no-store" }
+                );
+
+                if (!response.ok) {
+                    throw new Error("Unable to load records");
+                }
+
+                const data = await response.json();
+
+                totalRecords = data.total;
+
+                document.getElementById("totalVisitors")
+                    .textContent = totalRecords;
+
+                document.getElementById("displayedVisitors")
+                    .textContent = data.records.length;
+
+                if (data.records.length === 0) {
+
+                    message.textContent = "No visitor records found.";
+
+                } else {
+
+                    message.textContent = "";
+
+                    data.records.forEach(visitor => {
+
+                        const tr = document.createElement("tr");
+
+                        const ipCell = document.createElement("td");
+                        ipCell.textContent = visitor.ip;
+
+                        const timeCell = document.createElement("td");
+
+                        const date = new Date(visitor.timestamp);
+
+                        timeCell.textContent =
+                            date.toLocaleString("en-IN", {
+                                timeZone: "UTC",
+                                dateStyle: "medium",
+                                timeStyle: "medium"
+                            });
+
+                        tr.appendChild(ipCell);
+                        tr.appendChild(timeCell);
+
+                        rows.appendChild(tr);
+
+                    });
+                }
+
+                document.getElementById("pageInfo").textContent =
+                    `Page ${currentPage + 1}`;
+
+                document.getElementById("previousBtn").disabled =
+                    currentPage === 0;
+
+                document.getElementById("nextBtn").disabled =
+                    (currentPage + 1) * limit >= totalRecords;
+
+            } catch (error) {
+
+                console.error(error);
+                message.textContent = "Failed to load visitor records.";
+
+            }
+        }
+
+        function changePage(direction) {
+
+            currentPage += direction;
+
+            loadVisitors();
+        }
+
+        loadVisitors();
+
+    </script>
+
+</body>
+</html>
